@@ -1,0 +1,56 @@
+/* Follow Up Fox: small, non-destructive polish layer.
+   Keep your existing style.css and import this file after it. */
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--purple) 65%, white);
+  outline-offset: 2px;
+}
+
+.nav-item,
+.primary-button,
+.secondary-button,
+.filter-button,
+.discovery-card,
+.icon-button,
+.sidebar-menu button {
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease,
+    box-shadow .18s ease, transform .18s ease;
+}
+
+.nav-item[aria-current="page"] {
+  color: var(--purple);
+  background: #e6e7fe;
+  font-weight: 700;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+  transform: none !important;
+}
+
+.modal-backdrop.open {
+  animation: fox-backdrop-in .16s ease-out;
+}
+
+.modal-backdrop.open .modal {
+  animation: fox-modal-in .2s ease-out;
+}
+
+@keyframes fox-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fox-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/secrets/
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+dist/
+desktop.ini
+startup_batch_*.json

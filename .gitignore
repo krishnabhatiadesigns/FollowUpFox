@@ -5,6 +5,8 @@ backend/.env
 backend/.env.*
 !backend/.env.example
 backend/secrets/
+service-account*.json
+firebase-adminsdk*.json
 *.db
 *.sqlite
 *.sqlite3

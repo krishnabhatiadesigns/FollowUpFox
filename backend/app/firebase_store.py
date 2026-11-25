@@ -54,58 +54,82 @@ class FirebaseRealtimeStore:
         self._credentials = None
         self._credentials_lock = Lock()
 
+
     def _access_token(self) -> str:
         with self._credentials_lock:
             try:
-                    if self._credentials is None:
-                        if self.service_account_json_b64:
-                            try:
-                                decoded_json = base64.b64decode(
-                                    self.service_account_json_b64,
-                                    validate=True,
+                if self._credentials is None:
+                    if self.service_account_json_b64:
+                        try:
+                            decoded_json = base64.b64decode(
+                                self.service_account_json_b64,
+                                validate=True,
+                            )
+                            service_account_info = json.loads(
+                                decoded_json.decode("utf-8")
+                            )
+
+                            if not isinstance(service_account_info, dict):
+                                raise ValueError(
+                                    "Service-account JSON must be an object."
                                 )
-                                service_account_info = json.loads(decoded_json.decode("utf-8"))
 
-                                if not isinstance(service_account_info, dict):
-                                    raise ValueError("Service-account JSON must be an object.")
-
-                                self._credentials = service_account.Credentials.from_service_account_info(
+                            self._credentials = (
+                                service_account.Credentials.from_service_account_info(
                                     service_account_info,
                                     scopes=FIREBASE_DATABASE_SCOPES,
                                 )
-                            except (
-                                binascii.Error,
-                                UnicodeDecodeError,
-                                json.JSONDecodeError,
-                                ValueError,
-                                KeyError,
-                                TypeError,
-                            ) as exc:
-                                raise FirebaseStoreError(
-                                    "FIREBASE_SERVICE_ACCOUNT_JSON must contain valid Base64-encoded "
-                                    "Firebase service-account JSON."
+                            )
+                        except (
+                            binascii.Error,
+                            UnicodeDecodeError,
+                            json.JSONDecodeError,
+                            ValueError,
+                            KeyError,
+                            TypeError,
+                        ) as exc:
+                            raise FirebaseStoreError(
+                                "FIREBASE_SERVICE_ACCOUNT_JSON must contain valid "
+                                "Base64-encoded Firebase service-account JSON."
                             ) from exc
 
-                        elif self.service_account_path:
-                        self._credentials = service_account.Credentials.from_service_account_file(
-                            str(Path(self.service_account_path).resolve()),
-                            scopes=FIREBASE_DATABASE_SCOPES,
+                    elif self.service_account_path:
+                        self._credentials = (
+                            service_account.Credentials.from_service_account_file(
+                                str(Path(self.service_account_path).resolve()),
+                                scopes=FIREBASE_DATABASE_SCOPES,
+                            )
                         )
-                        else:
-                            self._credentials, _ = google.auth.default(
-                                scopes=FIREBASE_DATABASE_SCOPES
+                    else:
+                        self._credentials, _ = google.auth.default(
+                            scopes=FIREBASE_DATABASE_SCOPES
                         )
+
                 if not self._credentials.valid:
                     self._credentials.refresh(GoogleRequest())
-            except (GoogleAuthError, OSError, ValueError, requests.RequestException) as exc:
+
+            except (
+                GoogleAuthError,
+                OSError,
+                ValueError,
+                requests.RequestException,
+            ) as exc:
                 raise FirebaseStoreError(
-                    "Firebase credentials are unavailable. Configure FIREBASE_SERVICE_ACCOUNT_PATH "
-                    "or Google Application Default Credentials."
+                    "Firebase credentials are unavailable. Configure "
+                    "FIREBASE_SERVICE_ACCOUNT_JSON, "
+                    "FIREBASE_SERVICE_ACCOUNT_PATH, or Google Application "
+                    "Default Credentials."
                 ) from exc
+
             token = self._credentials.token
+
         if not token:
-            raise FirebaseStoreError("Google credentials did not provide a Firebase access token.")
+            raise FirebaseStoreError(
+                "Google credentials did not provide a Firebase access token."
+            )
+
         return token
+    
 
     def _url(self, path: str = "") -> str:
         encoded_path = "/".join(quote(part, safe="") for part in path.split("/") if part)

@@ -295,6 +295,7 @@ def firebase_store() -> FirebaseRealtimeStore:
         _firebase_store = FirebaseRealtimeStore(
             settings.firebase_database_url,
             settings.firebase_service_account_path,
+            settings.firebase_service_account_json,
         )
     return _firebase_store
 

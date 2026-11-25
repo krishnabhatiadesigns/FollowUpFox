@@ -47,6 +47,7 @@ MAX_RESUME_BYTES = 10 * 1024 * 1024
 class Settings(BaseSettings):
     firebase_database_url: str = ""
     firebase_service_account_path: str = ""
+    firebase_service_account_json: str = ""
     frontend_url: str = "http://localhost:5173"
     session_secret: str = "development-only-change-me"
     token_encryption_key: str = ""

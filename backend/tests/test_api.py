@@ -115,6 +115,52 @@ def test_firebase_session_skips_duplicate_job_source_and_title():
         session.close()
 
 
+def test_firebase_session_reuses_duplicate_skills_and_keeps_associations():
+    class TestBase(DeclarativeBase):
+        pass
+
+    class TestResume(TestBase):
+        __tablename__ = "resumes"
+
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    class TestSkill(TestBase):
+        __tablename__ = "skills"
+
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        name: Mapped[str] = mapped_column(String(collation="NOCASE"), unique=True)
+
+    class TestResumeSkill(TestBase):
+        __tablename__ = "resume_skills"
+
+        resume_id: Mapped[int] = mapped_column(ForeignKey("resumes.id"), primary_key=True)
+        skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), primary_key=True)
+
+    class FakeFirebaseStore:
+        def read_root(self):
+            return {
+                "resumes": [{"id": 10}],
+                "skills": [
+                    {"id": 1, "name": "Python"},
+                    {"id": 2, "name": "python"},
+                ],
+                "resume_skills": [
+                    {"resume_id": 10, "skill_id": 1},
+                    {"resume_id": 10, "skill_id": 2},
+                ],
+            }
+
+    session = create_firebase_session(TestBase, FakeFirebaseStore())
+    try:
+        skills = session.scalars(select(TestSkill)).all()
+        associations = session.scalars(select(TestResumeSkill)).all()
+
+        assert [(skill.id, skill.name) for skill in skills] == [(1, "Python")]
+        assert [(link.resume_id, link.skill_id) for link in associations] == [(10, 1)]
+    finally:
+        session.close()
+
+
 def test_firebase_session_skips_rows_with_orphaned_foreign_keys():
     class TestBase(DeclarativeBase):
         pass

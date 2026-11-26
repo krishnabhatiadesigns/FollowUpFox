@@ -312,6 +312,7 @@ def create_firebase_session(base, store: FirebaseRealtimeStore) -> Session:
         for mapper in base.registry.mappers
     }
     max_ids: dict[str, int] = {}
+    duplicate_skill_ids: dict[str, Any] = {}
     with engine.begin() as connection:
         for table in base.metadata.sorted_tables:
             rows = _rtdb_rows(snapshot.get(table.name))
@@ -338,6 +339,7 @@ def create_firebase_session(base, store: FirebaseRealtimeStore) -> Session:
                 rows_by_primary_key[primary_key] = row
 
             seen_job_keys: set[tuple[Any, Any]] = set()
+            inserted_primary_keys: set[tuple[Any, ...]] = set()
             for row in rows_by_primary_key.values():
                 values = {
                     column.name: _from_firebase(column, row[column.name])
@@ -349,6 +351,33 @@ def create_firebase_session(base, store: FirebaseRealtimeStore) -> Session:
                         key_column = next(iter(table.primary_key.columns))
                         if key_column.name == "id" and values.get("id") is not None:
                             max_ids[table.name] = max(max_ids.get(table.name, 0), int(values["id"]))
+                    if table.name == "skills" and isinstance(values.get("name"), str):
+                        existing_skill_id = connection.execute(
+                            select(table.c.id).where(table.c.name == values["name"])
+                        ).scalar_one_or_none()
+                        if existing_skill_id is not None:
+                            duplicate_skill_ids[str(values["id"])] = existing_skill_id
+                            logger.warning(
+                                "Skipping duplicate Firebase skill row id=%s; "
+                                "name %r is already stored with id=%s.",
+                                values.get("id"),
+                                values["name"],
+                                existing_skill_id,
+                            )
+                            continue
+
+                    for foreign_key in table.foreign_keys:
+                        if (
+                            foreign_key.column.table.name == "skills"
+                            and foreign_key.column.name == "id"
+                        ):
+                            value = values.get(foreign_key.parent.name)
+                            if value is not None:
+                                values[foreign_key.parent.name] = duplicate_skill_ids.get(
+                                    str(value),
+                                    value,
+                                )
+
                     orphaned_reference = next(
                         (
                             foreign_key
@@ -386,7 +415,18 @@ def create_firebase_session(base, store: FirebaseRealtimeStore) -> Session:
                                 )
                                 continue
                             seen_job_keys.add(unique_key)
+                    primary_key = tuple(
+                        values.get(column.name) for column in table.primary_key.columns
+                    )
+                    if primary_key in inserted_primary_keys:
+                        logger.warning(
+                            "Skipping duplicate Firebase row in %s with primary key=%s.",
+                            table.name,
+                            primary_key,
+                        )
+                        continue
                     connection.execute(table.insert(), values)
+                    inserted_primary_keys.add(primary_key)
 
     class FirebaseSession(Session):
         def __init__(self, **kwargs) -> None:

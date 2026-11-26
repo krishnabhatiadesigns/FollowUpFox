@@ -807,7 +807,14 @@ def list_startups(request: Request, db: DbSession):
 
 
 def set_session(response: Response, user_id: int):
-    response.set_cookie("outreach_session", signer.dumps({"user_id": user_id}), httponly=True, samesite="lax", secure=False, max_age=604800)
+    response.set_cookie(
+    "outreach_session",
+    signer.dumps({"user_id": user_id}),
+    httponly=True,
+    samesite="none",
+    secure=True,
+    max_age=604800
+)
 
 
 def current_user(request: Request, db: Session) -> User:

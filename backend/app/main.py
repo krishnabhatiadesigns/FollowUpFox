@@ -940,7 +940,7 @@ def google_callback(request: Request, db: DbSession):
 
 @app.post("/auth/logout")
 def logout(response: Response):
-    response.delete_cookie("outreach_session")
+    response.delete_cookie("outreach_session", samesite="none", secure=True)
     return {"ok": True}
 
 
